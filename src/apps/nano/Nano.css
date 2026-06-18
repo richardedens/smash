@@ -1,0 +1,121 @@
+.nano {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.35;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Title bar — inverted, like real nano. */
+.nano-title {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  padding: 0 1ch;
+  background: var(--fg);
+  color: var(--bg);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nano-title-left {
+  flex: 0 0 auto;
+}
+
+.nano-title-center {
+  flex: 1 1 auto;
+  text-align: center;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nano-title-right {
+  flex: 0 0 auto;
+  font-style: italic;
+}
+
+/* Editable text area. */
+.nano-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 0.25rem 1ch;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 4;
+}
+
+.nano-line {
+  min-height: 1.35em;
+}
+
+/* Block cursor (inverted character). */
+.nano-cursor {
+  background: var(--cursor);
+  color: var(--bg);
+  animation: nano-blink 1s steps(1) infinite;
+}
+
+.nano-cursor--inline {
+  display: inline-block;
+  width: 1ch;
+}
+
+@keyframes nano-blink {
+  50% {
+    background: transparent;
+    color: inherit;
+  }
+}
+
+/* Status / prompt line. */
+.nano-status {
+  padding: 0 1ch;
+  min-height: 1.35em;
+  white-space: pre;
+}
+
+.nano-status--msg {
+  text-align: center;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.nano-status--prompt {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* Two-row shortcut bar at the bottom. */
+.nano-shortcuts {
+  flex: 0 0 auto;
+  padding: 0.15rem 1ch 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.nano-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5ch;
+  white-space: nowrap;
+}
+
+.nano-chord {
+  flex: 0 0 auto;
+}
+
+.nano-key {
+  background: var(--fg);
+  color: var(--bg);
+  padding: 0 0.1ch;
+  font-weight: bold;
+}

@@ -1,104 +1,144 @@
 .terminal-container {
-  min-height: 100vh;
+  --bg: #1a1b26;
+  --fg: #a9b1d6;
+
+  height: 100vh;
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 16px;
-  line-height: 1.4;
-  cursor: text;
-  padding: 8px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-sizing: border-box;
-  /* Classic CRT phosphor glow */
-  text-shadow: 0 0 6px currentColor;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo,
+    Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 15px;
+  line-height: 1.45;
+  cursor: text;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Subtle scanline overlay */
-.terminal-container::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 3px,
-    rgba(0, 0, 0, 0.08) 3px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
-  pointer-events: none;
-  z-index: 10;
-}
-
-.terminal-screen {
-  flex: 1;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
+/* Full-width output column. */
 .terminal-output {
+  width: 100%;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
 }
 
 .terminal-line {
-  min-height: 1.4em;
-  white-space: pre;
+  min-height: 1.45em;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.terminal-error {
-  color: #FF5555;
-  text-shadow: 0 0 6px #FF5555;
-}
+/* --- Input row ----------------------------------------------------------- */
 
-.terminal-command {
-  opacity: 0.9;
-}
-
-/* Input row */
 .terminal-input-row {
   display: flex;
-  align-items: center;
-  position: relative;
-  margin-top: 2px;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .terminal-prompt {
-  white-space: nowrap;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  white-space: pre;
 }
 
-.terminal-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  caret-color: transparent; /* we render our own cursor */
-  padding: 0;
+/* The field stretches to the full remaining width of the browser. */
+.terminal-field {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The real input sits transparently on top and captures all keystrokes. */
+.terminal-real-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  text-shadow: inherit;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  letter-spacing: inherit;
 }
 
-/* Hide the native caret; use blinking block cursor */
-.terminal-input::selection {
-  background: rgba(170, 170, 170, 0.4);
+.terminal-real-input::selection {
+  background: rgba(125, 207, 255, 0.3);
 }
 
-/* Blinking block cursor appended after input text */
-.terminal-cursor {
-  display: inline-block;
-  width: 0.6em;
-  height: 1.1em;
-  background: currentColor;
-  vertical-align: text-bottom;
-  animation: blink 1s step-start infinite;
-  flex-shrink: 0;
+/* The mirror is what the user actually sees: highlighted text + block cursor. */
+.terminal-mirror {
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1.45em;
+  pointer-events: none;
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
+/* Blinking block cursor that sits right where the text caret is. */
+.term-cursor {
+  background: var(--cursor);
+  color: var(--bg);
+  animation: terminal-blink 1.05s steps(1) infinite;
+}
+
+.term-cursor--idle {
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 1px var(--fg);
+  animation: none;
+}
+
+@keyframes terminal-blink {
+  50% {
+    background: transparent;
+    color: inherit;
+  }
+}
+
+/* --- SMASH color roles --------------------------------------------------- */
+
+.tl-default {
+  color: var(--fg);
+}
+.tl-error {
+  color: var(--red);
+}
+.tl-accent {
+  color: var(--green);
+}
+.tl-muted {
+  color: var(--gray);
+}
+.tl-dir {
+  color: var(--blue);
+  font-weight: 600;
+}
+.tl-exec {
+  color: var(--green);
+}
+.tl-file {
+  color: var(--fg);
+}
+.tl-path {
+  color: var(--cyan);
+}
+.tl-string {
+  color: var(--yellow);
+}
+.tl-flag {
+  color: var(--cyan);
+}
+.tl-cmd-bad {
+  color: var(--red);
+}
+.tl-label {
+  color: var(--accent, var(--green));
+  font-weight: 600;
 }

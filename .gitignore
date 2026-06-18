@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.smoke-out
+public/pyodide
 *.local
 
 # Editor directories and files

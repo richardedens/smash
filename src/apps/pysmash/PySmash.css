@@ -1,0 +1,138 @@
+.pysmash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.45;
+}
+
+.pysmash-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1ch;
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: bold;
+}
+
+.pysmash-title-right {
+  font-style: italic;
+  font-weight: normal;
+}
+
+/* Editor: a transparent textarea on top of a highlighted <pre>. */
+.pysmash-editor {
+  position: relative;
+  flex: 1 1 60%;
+  overflow: hidden;
+}
+
+.pysmash-highlight,
+.pysmash-input {
+  margin: 0;
+  padding: 0.5rem 1ch;
+  border: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.45;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+  position: absolute;
+  inset: 0;
+}
+
+.pysmash-highlight {
+  pointer-events: none;
+  z-index: 0;
+  color: var(--fg);
+}
+
+.pysmash-input {
+  z-index: 1;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--fg);
+  outline: none;
+}
+
+.pysmash-input::selection {
+  background: rgba(125, 207, 255, 0.3);
+}
+
+/* Output pane. */
+.pysmash-output {
+  flex: 0 0 30%;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--gray);
+  overflow: hidden;
+}
+
+.pysmash-output-label {
+  padding: 0 1ch;
+  color: var(--bg);
+  background: var(--gray);
+  font-size: 0.85em;
+}
+
+.pysmash-output-body {
+  margin: 0;
+  padding: 0.4rem 1ch;
+  flex: 1 1 auto;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Bottom bar. */
+.pysmash-bar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.15rem 1ch;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.pysmash-status--run {
+  color: var(--bg);
+  font-weight: bold;
+}
+
+.pysmash-key {
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0 0.3ch;
+  font-weight: bold;
+}
+
+/* Python syntax colors. */
+.py-keyword {
+  color: var(--magenta);
+  font-weight: 600;
+}
+.py-string {
+  color: var(--yellow);
+}
+.py-comment {
+  color: var(--gray);
+  font-style: italic;
+}
+.py-number {
+  color: var(--cyan);
+}
+.py-builtin {
+  color: var(--blue);
+}
+.py-decorator {
+  color: var(--green);
+}
