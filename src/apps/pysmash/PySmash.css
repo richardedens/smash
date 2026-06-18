@@ -26,10 +26,55 @@
   font-weight: normal;
 }
 
-/* Editor: a transparent textarea on top of a highlighted <pre>. */
+/* Loading bar while Python (Pyodide) downloads/initializes. */
+.pysmash-progress {
+  height: 4px;
+  width: 100%;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+  overflow: hidden;
+}
+
+.pysmash-progress-bar {
+  height: 100%;
+  width: 35%;
+  background: var(--green);
+  animation: pysmash-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes pysmash-indeterminate {
+  0% {
+    margin-left: -35%;
+  }
+  100% {
+    margin-left: 100%;
+  }
+}
+
+/* Editor: a line-number gutter + a transparent textarea over a highlighted <pre>. */
 .pysmash-editor {
-  position: relative;
+  display: flex;
   flex: 1 1 60%;
+  overflow: hidden;
+}
+
+.pysmash-gutter {
+  margin: 0;
+  padding: 0.5rem 0.5ch;
+  flex: 0 0 auto;
+  min-width: 3ch;
+  text-align: right;
+  color: var(--gray);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+  white-space: pre;
+  overflow: hidden;
+  line-height: 1.45;
+  user-select: none;
+}
+
+.pysmash-code {
+  position: relative;
+  flex: 1 1 auto;
   overflow: hidden;
 }
 
@@ -46,6 +91,37 @@
   overflow: auto;
   position: absolute;
   inset: 0;
+}
+
+.pysmash-marker {
+  display: inline-block;
+  width: 0;
+}
+
+/* Completion popup (intellisense). */
+.pysmash-complete {
+  position: absolute;
+  z-index: 5;
+  margin: 0;
+  padding: 0.15rem 0;
+  list-style: none;
+  min-width: 14ch;
+  max-height: 12em;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--gray);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.pysmash-complete li {
+  padding: 0 1ch;
+  cursor: pointer;
+  white-space: pre;
+}
+
+.pysmash-complete li.sel {
+  background: var(--blue);
+  color: var(--bg);
 }
 
 .pysmash-highlight {

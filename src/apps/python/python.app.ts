@@ -22,29 +22,34 @@ function collectPyFiles(fs: FsApi, dir: string, base: string, acc: { path: strin
   }
 }
 
-registerApp({
-  name: 'python',
-  summary: 'Run Python (Pyodide); has a db() bridge to SQLite',
-  usage: 'python <file.py>  |  python -c "<code>"',
-  async run({ args, raw, shell }: AppContext): Promise<AppResult> {
-    if (!args.length) {
-      return output([{ text: 'usage: python <file.py> | python -c "<code>"', kind: 'muted' }]);
-    }
-    let code: string;
-    if (args[0] === '-c') {
-      code = raw
-        .slice(raw.indexOf('-c') + 2)
-        .trim()
-        .replace(/^(['"])([\s\S]*)\1$/, '$2');
-    } else {
-      const path = shell.resolve(args[0]);
-      if (!shell.fs.isFile(path)) return fail(`python: can't open file '${args[0]}': No such file`);
-      code = shell.fs.read(path) ?? '';
-    }
-    const result = await runPython(code);
-    return asLines(result.text, result.ok);
-  },
-});
+async function runPythonCommand({ args, raw, shell }: AppContext): Promise<AppResult> {
+  if (!args.length) {
+    return output([{ text: 'usage: python <file.py> | python -c "<code>"', kind: 'muted' }]);
+  }
+  let code: string;
+  if (args[0] === '-c') {
+    code = raw
+      .slice(raw.indexOf('-c') + 2)
+      .trim()
+      .replace(/^(['"])([\s\S]*)\1$/, '$2');
+  } else {
+    const path = shell.resolve(args[0]);
+    if (!shell.fs.isFile(path)) return fail(`python: can't open file '${args[0]}': No such file`);
+    code = shell.fs.read(path) ?? '';
+  }
+  const result = await runPython(code);
+  return asLines(result.text, result.ok);
+}
+
+// `python`, `py`, and `python3` are the same interpreter.
+for (const name of ['python', 'py', 'python3'] as const) {
+  registerApp({
+    name,
+    summary: 'Run Python (Pyodide); has a db() bridge to SQLite',
+    usage: `${name} <file.py>  |  ${name} -c "<code>"`,
+    run: runPythonCommand,
+  });
+}
 
 registerApp({
   name: 'pip',

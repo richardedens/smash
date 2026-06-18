@@ -6,6 +6,8 @@ import { homeOf } from '../kernel/users';
 import { applyColorOverrides, DEFAULT_THEME, themeEnv, THEMES } from '../kernel/themes';
 import { complete, highlight, runCommand } from '../apps/runtime';
 import type { AppResult, ShellApi } from '../apps/types';
+import { getPythonStatus, onPythonStatus } from '../kernel/python';
+import type { PythonStatus } from '../kernel/python';
 import type { Kind, Line, Segment } from '../types';
 import './Terminal.css';
 
@@ -14,6 +16,23 @@ const PROMPT_ARROW = '➜';
 /** Map a semantic kind onto a CSS class. */
 function kindClass(kind?: Kind): string {
   return kind ? `tl-${kind}` : '';
+}
+
+/** Shown while an async command runs; a progress bar while Python is loading. */
+function RunningIndicator() {
+  const [status, setStatus] = useState<PythonStatus>(getPythonStatus);
+  useEffect(() => onPythonStatus(setStatus), []);
+  if (status.phase === 'loading') {
+    return (
+      <div className="terminal-loading">
+        <span className="tl-accent">🐍 {status.message}</span>
+        <div className="terminal-progress">
+          <div className="terminal-progress-bar" />
+        </div>
+      </div>
+    );
+  }
+  return <div className="terminal-line tl-muted">…</div>;
 }
 
 export default function Terminal() {
@@ -384,7 +403,7 @@ export default function Terminal() {
       <div className="terminal-output">
         {lines.map(renderLine)}
 
-        {running && <div className="terminal-line tl-muted">…</div>}
+        {running && <RunningIndicator />}
 
         {!booting && !activeApp && !running && (
           <form className="terminal-input-row" onSubmit={handleSubmit}>

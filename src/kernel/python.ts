@@ -33,46 +33,105 @@ export function isPythonLoaded(): boolean {
   return pyodidePromise !== null;
 }
 
+// --- Load status (so the UI can show a progress bar) ----------------------
+
+export interface PythonStatus {
+  phase: 'idle' | 'loading' | 'ready' | 'error';
+  message: string;
+}
+
+let status: PythonStatus = { phase: 'idle', message: '' };
+const statusListeners = new Set<(s: PythonStatus) => void>();
+
+export function getPythonStatus(): PythonStatus {
+  return status;
+}
+
+export function onPythonStatus(fn: (s: PythonStatus) => void): () => void {
+  statusListeners.add(fn);
+  fn(status);
+  return () => {
+    statusListeners.delete(fn);
+  };
+}
+
+function setStatus(phase: PythonStatus['phase'], message: string): void {
+  status = { phase, message };
+  for (const fn of statusListeners) fn(status);
+}
+
 async function setupDbBridge(py: PyodideInterface): Promise<void> {
   const database = await getDatabase();
-  py.globals.set('__smash_db_exec', (sql: string) => {
+  // Exposed as a Python global; returns a JSON string so the boundary is simple.
+  py.globals.set('__smash_db_exec', (sql: string): string => {
     try {
       const isWrite = !/^\s*(select|pragma|with|explain)/i.test(sql);
       const result = database.exec(sql);
       if (isWrite) persistDatabase();
-      if (!result.length) return { columns: [] as string[], rows: [] as unknown[][] };
-      return { columns: result[0].columns, rows: result[0].values };
+      if (!result.length) return JSON.stringify({ columns: [], rows: [] });
+      return JSON.stringify({ columns: result[0].columns, rows: result[0].values });
     } catch (err) {
-      return { error: err instanceof Error ? err.message : 'sql error' };
+      return JSON.stringify({ error: err instanceof Error ? err.message : 'sql error' });
     }
   });
   // A Python `db(sql)` helper: SELECT → list of dict rows, writes → [].
   await py.runPythonAsync(`
-from js import __smash_db_exec as _exec
+import json as _json
 def db(sql):
-    res = _exec(sql).to_py()
-    if isinstance(res, dict) and res.get('error'):
+    res = _json.loads(__smash_db_exec(sql))
+    if 'error' in res:
         raise RuntimeError(res['error'])
-    cols = list(res.get('columns', []))
-    rows = res.get('rows', []) or []
-    return [dict(zip(cols, list(r))) for r in rows]
+    cols = res.get('columns', [])
+    rows = res.get('rows', [])
+    return [dict(zip(cols, r)) for r in rows]
 `);
 }
+
+// Load the UMD build via a <script> tag (it sets globalThis.loadPyodide).
+// We avoid `import()` because /pyodide lives in /public and can't be imported.
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-pyodide]')) return resolve();
+    const script = document.createElement('script');
+    script.src = src;
+    script.dataset.pyodide = 'true';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+type LoadPyodide = (opts: { indexURL: string }) => Promise<PyodideInterface>;
 
 function loadPyodide(): Promise<PyodideInterface> {
   if (pyodidePromise) return pyodidePromise;
   pyodidePromise = (async () => {
-    const mod = await import(/* @vite-ignore */ BASE_URL + 'pyodide.mjs');
-    const py = (await mod.loadPyodide({ indexURL: BASE_URL })) as PyodideInterface;
+    setStatus('loading', 'Downloading Python runtime (~13 MB)…');
+    await loadScript(BASE_URL + 'pyodide.js');
+    setStatus('loading', 'Starting the Python interpreter…');
+    const loader = (globalThis as unknown as { loadPyodide?: LoadPyodide }).loadPyodide;
+    if (!loader) throw new Error('pyodide failed to load');
+    const py = await loader({ indexURL: BASE_URL });
+    setStatus('loading', 'Connecting the db() bridge…');
     await setupDbBridge(py);
+    setStatus('ready', 'Python ready');
     return py;
-  })();
+  })().catch((err: unknown) => {
+    pyodidePromise = null; // allow a retry
+    setStatus('error', err instanceof Error ? err.message : 'failed to load Python');
+    throw err;
+  });
   return pyodidePromise;
 }
 
 /** Run Python source, returning combined stdout/stderr. */
 export async function runPython(code: string): Promise<PyResult> {
-  const py = await loadPyodide();
+  let py: PyodideInterface;
+  try {
+    py = await loadPyodide();
+  } catch (err) {
+    return { ok: false, text: err instanceof Error ? err.message : 'failed to load Python' };
+  }
   const chunks: string[] = [];
   py.setStdout({ batched: (s) => chunks.push(s) });
   py.setStderr({ batched: (s) => chunks.push(s) });
@@ -87,19 +146,32 @@ export async function runPython(code: string): Promise<PyResult> {
 
 /** Install a pure-Python package with micropip. */
 export async function installPackage(name: string): Promise<PyResult> {
-  const py = await loadPyodide();
+  let py: PyodideInterface;
+  try {
+    py = await loadPyodide();
+  } catch (err) {
+    return { ok: false, text: err instanceof Error ? err.message : 'failed to load Python' };
+  }
+  setStatus('loading', `Installing ${name}…`);
   try {
     await py.loadPackage('micropip');
     await py.pyimport('micropip').install(name);
+    setStatus('ready', `Installed ${name}`);
     return { ok: true, text: `Successfully installed ${name}` };
   } catch (err) {
+    setStatus('ready', '');
     return { ok: false, text: err instanceof Error ? err.message : `failed to install ${name}` };
   }
 }
 
 /** Run pytest over a set of files written into the Pyodide filesystem. */
 export async function runPytest(files: { path: string; content: string }[], target: string): Promise<PyResult> {
-  const py = await loadPyodide();
+  let py: PyodideInterface;
+  try {
+    py = await loadPyodide();
+  } catch (err) {
+    return { ok: false, text: err instanceof Error ? err.message : 'failed to load Python' };
+  }
   if (!pytestReady) {
     const install = await installPackage('pytest');
     if (!install.ok) return install;

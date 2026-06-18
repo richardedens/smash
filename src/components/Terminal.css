@@ -102,6 +102,39 @@
   }
 }
 
+/* --- Loading / progress bar ---------------------------------------------- */
+
+.terminal-loading {
+  margin: 0.2rem 0;
+}
+
+.terminal-progress {
+  margin-top: 0.25rem;
+  height: 6px;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+  overflow: hidden;
+}
+
+.terminal-progress-bar {
+  height: 100%;
+  width: 40%;
+  border-radius: 3px;
+  background: var(--green);
+  animation: terminal-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes terminal-indeterminate {
+  0% {
+    margin-left: -40%;
+  }
+  100% {
+    margin-left: 100%;
+  }
+}
+
 /* --- SMASH color roles --------------------------------------------------- */
 
 .tl-default {

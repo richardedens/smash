@@ -21,7 +21,7 @@ const cdn = `https://cdn.jsdelivr.net/pyodide/v${version}/full/`;
 await mkdir(dest, { recursive: true });
 
 // 1. Core runtime files (already in node_modules).
-const core = ['pyodide.mjs', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'];
+const core = ['pyodide.js', 'pyodide.mjs', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'];
 for (const file of core) {
   await cp(resolve(src, file), resolve(dest, file));
 }
