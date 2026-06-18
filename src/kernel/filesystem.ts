@@ -5,6 +5,7 @@
 // `FsApi`, which keeps path handling and mutation in one place.
 
 import type { DirNode, FsNode } from '../types';
+import { markDirty } from './store';
 
 export const USER = 'smash';
 export const HOST = 'smash-web';
@@ -245,6 +246,7 @@ export const fs: FsApi = {
     const existing = parent.children[basename(path)];
     const exec = existing?.type === 'file' ? existing.exec : undefined;
     parent.children[basename(path)] = { type: 'file', content, exec };
+    markDirty();
     return true;
   },
 
@@ -258,6 +260,7 @@ export const fs: FsApi = {
     const node = nodeAt(path);
     if (!node || node.type !== 'file') return false;
     node.exec = exec;
+    markDirty();
     return true;
   },
 
@@ -283,6 +286,7 @@ export const fs: FsApi = {
     if (!parent || parent.type !== 'dir') return false;
     if (parent.children[basename(path)]) return false;
     parent.children[basename(path)] = { type: 'dir', children: {} };
+    markDirty();
     return true;
   },
 
@@ -292,6 +296,7 @@ export const fs: FsApi = {
     const parent = nodeAt(dirname(path));
     if (!parent || parent.type !== 'dir') return false;
     delete parent.children[basename(path)];
+    markDirty();
     return true;
   },
 
@@ -303,6 +308,7 @@ export const fs: FsApi = {
     const parent = nodeAt(dirname(path));
     if (!parent || parent.type !== 'dir') return false;
     delete parent.children[basename(path)];
+    markDirty();
     return true;
   },
 
@@ -315,6 +321,7 @@ export const fs: FsApi = {
       node.type === 'file'
         ? { type: 'file', content: node.content }
         : { type: 'dir', children: { ...node.children } };
+    markDirty();
     return true;
   },
 
@@ -328,6 +335,16 @@ export const fs: FsApi = {
     return node ? sizeOf(node) : 0;
   },
 };
+
+/** The whole filesystem tree, for persistence. */
+export function serializeFs(): DirNode {
+  return root;
+}
+
+/** Replace the filesystem contents from a restored tree. */
+export function replaceFs(node: DirNode): void {
+  if (node && node.type === 'dir') root.children = node.children;
+}
 
 /** Default environment variables for a shell rooted at `cwd`. */
 export function defaultEnv(cwd: string): Record<string, string> {

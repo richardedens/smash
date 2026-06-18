@@ -8,6 +8,9 @@ import { complete, highlight, runCommand } from '../apps/runtime';
 import type { AppResult, ShellApi } from '../apps/types';
 import { getPythonStatus, onPythonStatus } from '../kernel/python';
 import type { PythonStatus } from '../kernel/python';
+import { initPersistence, restoreSession, setUiStateProvider } from '../kernel/session';
+import type { SessionUi } from '../kernel/session';
+import { markDirty } from '../kernel/store';
 import type { Kind, Line, Segment } from '../types';
 import './Terminal.css';
 
@@ -54,6 +57,7 @@ export default function Terminal() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const uiRef = useRef<SessionUi>({ theme: DEFAULT_THEME, env: {}, cwd: HOME, user: 'smash' });
 
   // The effective theme is the named palette with any SMASH_* color overrides
   // applied, so `export SMASH_GREEN=#f00` recolors the UI live.
@@ -92,40 +96,66 @@ export default function Terminal() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Source ~/.smashrc once at startup so its export/alias lines take effect.
+  // Restore the saved (encrypted) session, then either re-source ~/.smashrc on a
+  // fresh disk or trust the restored state. Finally, turn on autosave.
   useEffect(() => {
-    const rc = fs.read(`${HOME}/.smashrc`);
-    if (rc === null) return;
-    const base = THEMES[DEFAULT_THEME];
-    const bootShell: ShellApi = {
-      cwd: HOME,
-      user: 'smash',
-      host: HOST,
-      chrootRoot: '/',
-      env: { ...defaultEnv(HOME), ...themeEnv(base) },
-      history: [],
-      theme: base,
-      themeName: DEFAULT_THEME,
-      fs,
-      resolve: (path: string) => fs.resolve(HOME, path),
-      cd: () => true,
-      setTheme: (name: string) => {
-        if (!THEMES[name]) return false;
-        setThemeName(name);
-        return true;
-      },
-      setEnv: (name: string, value: string) => setEnvOverrides((prev) => ({ ...prev, [name]: value })),
-      unsetEnv: (name: string) =>
-        setEnvOverrides((prev) => {
-          const next = { ...prev };
-          delete next[name];
-          return next;
-        }),
-      login: () => {},
-      chroot: () => {},
+    let cancelled = false;
+    void (async () => {
+      const restored = await restoreSession();
+      if (cancelled) return;
+      if (restored) {
+        if (THEMES[restored.theme]) setThemeName(restored.theme);
+        setEnvOverrides(restored.env ?? {});
+        if (restored.cwd) setCwd(restored.cwd);
+        if (restored.user) setCurrentUser(restored.user);
+      }
+      setUiStateProvider(() => uiRef.current);
+      initPersistence();
+
+      if (!restored) {
+        const rc = fs.read(`${HOME}/.smashrc`);
+        if (rc === null) return;
+        const base = THEMES[DEFAULT_THEME];
+        const bootShell: ShellApi = {
+          cwd: HOME,
+          user: 'smash',
+          host: HOST,
+          chrootRoot: '/',
+          env: { ...defaultEnv(HOME), ...themeEnv(base) },
+          history: [],
+          theme: base,
+          themeName: DEFAULT_THEME,
+          fs,
+          resolve: (path: string) => fs.resolve(HOME, path),
+          cd: () => true,
+          setTheme: (name: string) => {
+            if (!THEMES[name]) return false;
+            setThemeName(name);
+            return true;
+          },
+          setEnv: (name: string, value: string) => setEnvOverrides((prev) => ({ ...prev, [name]: value })),
+          unsetEnv: (name: string) =>
+            setEnvOverrides((prev) => {
+              const next = { ...prev };
+              delete next[name];
+              return next;
+            }),
+          login: () => {},
+          chroot: () => {},
+        };
+        void runCommand('source ~/.smashrc', bootShell);
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
-    void runCommand('source ~/.smashrc', bootShell);
   }, []);
+
+  // Keep the persisted UI state current and trigger an autosave on change.
+  useEffect(() => {
+    uiRef.current = { theme: themeName, env: envOverrides, cwd, user: currentUser };
+    markDirty();
+  }, [themeName, envOverrides, cwd, currentUser]);
 
   // Auto-scroll to the bottom when output grows.
   useEffect(() => {

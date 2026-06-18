@@ -2,10 +2,18 @@
 // prompt. Kept in a tiny module-level store so both the `alias` app and the
 // command runner can reach it without an import cycle.
 
+import { markDirty } from './store';
+
 const aliases = new Map<string, string>();
 
 export function defineAlias(name: string, value: string): void {
   aliases.set(name, value);
+  markDirty();
+}
+
+export function restoreAliases(entries: [string, string][]): void {
+  aliases.clear();
+  for (const [name, value] of entries) aliases.set(name, value);
 }
 
 export function lookupAlias(name: string): string | undefined {

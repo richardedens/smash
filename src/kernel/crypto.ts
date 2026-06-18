@@ -104,3 +104,54 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (!saltHex) return false;
   return (await hashPassword(password, saltHex)) === stored;
 }
+
+// --- Device key (for at-rest encryption of the session) -------------------
+
+const DEVICE_KEY_STORAGE = 'smash:devicekey';
+let deviceKeyPromise: Promise<CryptoKey> | null = null;
+
+function lsGet(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function lsSet(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** A persistent per-device AES-GCM key (generated once, stored in localStorage). */
+export function getDeviceKey(): Promise<CryptoKey> {
+  if (deviceKeyPromise) return deviceKeyPromise;
+  deviceKeyPromise = (async () => {
+    const stored = lsGet(DEVICE_KEY_STORAGE);
+    const raw = stored ? fromBase64(stored) : crypto.getRandomValues(new Uint8Array(32));
+    if (!stored) lsSet(DEVICE_KEY_STORAGE, toBase64(raw.buffer as ArrayBuffer));
+    return crypto.subtle.importKey('raw', raw as BufferSource, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  })();
+  return deviceKeyPromise;
+}
+
+/** Encrypt with an AES-GCM key (no passphrase/PBKDF2 — cheap, for frequent saves). */
+export async function encryptWithKey(key: CryptoKey, plaintext: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, encoder.encode(plaintext));
+  return `smashk1:${toBase64(iv.buffer as ArrayBuffer)}:${toBase64(ciphertext)}`;
+}
+
+export async function decryptWithKey(key: CryptoKey, token: string): Promise<string> {
+  const parts = token.split(':');
+  if (parts.length !== 3 || parts[0] !== 'smashk1') throw new Error('not a valid session blob');
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: fromBase64(parts[1]) as BufferSource },
+    key,
+    fromBase64(parts[2]) as BufferSource,
+  );
+  return decoder.decode(plaintext);
+}

@@ -14,6 +14,7 @@ import './db/db.app';
 import './users/users.app';
 import './python/python.app';
 import './pysmash/pysmash.app';
+import './persist/persist.app';
 
 import { appNames, getApp, hasApp, listApps, registerApp } from './registry';
 import type { App, AppResult, ShellApi } from './types';

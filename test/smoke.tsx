@@ -182,6 +182,16 @@ async function logicTests() {
   check('help lists pysmash + python', run('help').text.includes('pysmash') && run('help').text.includes('python'));
   check('python shows usage', (await arun('python')).text.includes('usage'));
   check('pip needs install', !(await arun('pip nonsense')).ok);
+
+  // Encrypted session persistence: write → save → wipe → restore.
+  const session = await import('../src/kernel/session');
+  fs.write(`${HOME}/persisted.txt`, 'remember me');
+  await session.saveNow();
+  check('session is saved', session.hasSavedSession());
+  fs.remove(`${HOME}/persisted.txt`, false);
+  check('file removed in memory', !fs.exists(`${HOME}/persisted.txt`));
+  await session.restoreSession();
+  check('file restored from encrypted session', fs.read(`${HOME}/persisted.txt`) === 'remember me');
 }
 
 async function renderTest() {

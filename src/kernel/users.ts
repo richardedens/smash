@@ -4,6 +4,7 @@
 // stored only as PBKDF2 hashes; a null hash means "no password set".
 
 import { hashPassword, verifyPassword } from './crypto';
+import { markDirty } from './store';
 
 export interface UserRecord {
   uid: number;
@@ -37,12 +38,14 @@ export function addUser(name: string): UserRecord | null {
   if (users[name]) return null;
   const uid = Math.max(1000, ...Object.values(users).map((u) => u.uid)) + 1;
   users[name] = { uid, home: name === 'root' ? '/root' : `/home/${name}`, shell: '/bin/smash', hash: null };
+  markDirty();
   return users[name];
 }
 
 export function removeUser(name: string): boolean {
   if (!users[name] || name === 'smash' || name === 'root') return false;
   delete users[name];
+  markDirty();
   return true;
 }
 
@@ -50,7 +53,17 @@ export async function setPassword(name: string, password: string): Promise<boole
   const record = users[name];
   if (!record) return false;
   record.hash = await hashPassword(password);
+  markDirty();
   return true;
+}
+
+export function serializeUsers(): Record<string, UserRecord> {
+  return users;
+}
+
+export function restoreUsers(saved: Record<string, UserRecord>): void {
+  for (const key of Object.keys(users)) delete users[key];
+  Object.assign(users, saved);
 }
 
 export async function authenticate(name: string, password: string): Promise<boolean> {
